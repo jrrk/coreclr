@@ -10987,8 +10987,8 @@ GenTreePtr Compiler::fgMorphSmpOp(GenTreePtr tree, MorphAddrContext* mac)
                 if ((tree->OperGet() == GT_MOD) && op2->IsIntegralConst())
                 {
                     ssize_t divisorValue    = op2->AsIntCon()->IconValue();
-                    size_t  absDivisorValue = (divisorValue == SSIZE_T_MIN) ? static_cast<size_t>(divisorValue)
-                                                                           : static_cast<size_t>(abs(divisorValue));
+                    size_t  absDivisorValue = (divisorValue ^ (ssize_t)SSIZE_T_MIN) ? static_cast<size_t>(abs(divisorValue))
+                                                                           : static_cast<size_t>((divisorValue));
 
                     if (!isPow2(absDivisorValue))
                     {
@@ -12569,7 +12569,7 @@ GenTreePtr Compiler::fgMorphSmpOp(GenTreePtr tree, MorphAddrContext* mac)
                     if (abs_mult == lowestBit)
                     {
                         // if negative negate (min-int does not need negation)
-                        if (mult < 0 && mult != SSIZE_T_MIN)
+                        if (mult < 0 && (mult ^ (ssize_t)SSIZE_T_MIN))
                         {
                             tree->gtOp.gtOp1 = op1 = gtNewOperNode(GT_NEG, op1->gtType, op1);
                             fgMorphTreeDone(op1);
@@ -12611,7 +12611,7 @@ GenTreePtr Compiler::fgMorphSmpOp(GenTreePtr tree, MorphAddrContext* mac)
                         if (factor == 3 || factor == 5 || factor == 9)
                         {
                             // if negative negate (min-int does not need negation)
-                            if (mult < 0 && mult != SSIZE_T_MIN)
+                            if (mult < 0 && (mult ^ (ssize_t)SSIZE_T_MIN))
                             {
                                 tree->gtOp.gtOp1 = op1 = gtNewOperNode(GT_NEG, op1->gtType, op1);
                                 fgMorphTreeDone(op1);

@@ -23,7 +23,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define UnsignedMultiply128 _umul128
+#define UnsignedMultiply128 umul128
 ULONG64
 UnsignedMultiply128 (
     IN ULONG64  Multiplier,
@@ -31,7 +31,7 @@ UnsignedMultiply128 (
     OUT ULONG64 *HighProduct
     );
 #ifdef _MSC_VER
-#pragma intrinsic(_umul128)
+#pragma intrinsic(umul128)
 #endif // _MSC_VER
 #ifdef __cplusplus
 }
