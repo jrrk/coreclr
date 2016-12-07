@@ -5925,7 +5925,15 @@ GenTreePtr Compiler::fgMorphStackArgForVarArgs(unsigned lclNum, var_types varTyp
                                         lclOffs));
 
         // Access the argument through the local
-        GenTreePtr tree = gtNewOperNode(GT_IND, varType, ptrArg);
+        GenTreePtr tree;
+        if (varType == TYP_STRUCT)
+        {
+            tree = gtNewBlockVal(ptrArg, varDsc->lvExactSize);
+        }
+        else
+        {
+            tree = gtNewOperNode(GT_IND, varType, ptrArg);
+        }
         tree->gtFlags |= GTF_IND_TGTANYWHERE;
 
         if (varDsc->lvAddrExposed)
@@ -5962,8 +5970,14 @@ GenTreePtr Compiler::fgMorphLocalVar(GenTreePtr tree)
     if (info.compIsVarArgs)
     {
         GenTreePtr newTree = fgMorphStackArgForVarArgs(lclNum, varType, 0);
-        if (newTree != NULL)
+        if (newTree != nullptr)
+        {
+            if (newTree->OperIsBlk() && ((tree->gtFlags & GTF_VAR_DEF) == 0))
+            {
+                fgMorphBlkToInd(newTree->AsBlk(), newTree->gtType);
+            }
             return newTree;
+        }
     }
 #endif // _TARGET_X86_
 
@@ -8340,8 +8354,14 @@ GenTreePtr Compiler::fgMorphLeaf(GenTreePtr tree)
         {
             GenTreePtr newTree =
                 fgMorphStackArgForVarArgs(tree->gtLclFld.gtLclNum, tree->gtType, tree->gtLclFld.gtLclOffs);
-            if (newTree != NULL)
+            if (newTree != nullptr)
+            {
+                if (newTree->OperIsBlk() && ((tree->gtFlags & GTF_VAR_DEF) == 0))
+                {
+                    fgMorphBlkToInd(newTree->AsBlk(), newTree->gtType);
+                }
                 return newTree;
+            }
         }
     }
 #endif // _TARGET_X86_
@@ -9217,9 +9237,18 @@ GenTree* Compiler::fgMorphBlkNode(GenTreePtr tree, bool isDest)
         if (blkNode->AsDynBlk()->gtDynamicSize->IsCnsIntOrI())
         {
             unsigned size = (unsigned)blkNode->AsDynBlk()->gtDynamicSize->AsIntConCommon()->IconValue();
-            blkNode->AsDynBlk()->gtDynamicSize = nullptr;
-            blkNode->ChangeOper(GT_BLK);
-            blkNode->gtBlkSize = size;
+            // A GT_BLK with size of zero is not supported,
+            // so if we encounter such a thing we just leave it as a GT_DYN_BLK
+            if (size != 0)
+            {
+                blkNode->AsDynBlk()->gtDynamicSize = nullptr;
+                blkNode->ChangeOper(GT_BLK);
+                blkNode->gtBlkSize = size;
+            }
+            else
+            {
+                return tree;
+            }
         }
         else
         {
@@ -16832,14 +16861,6 @@ void Compiler::fgMorph()
 
     fgRemoveEmptyBlocks();
 
-    /* Add any internal blocks/trees we may need */
-
-    fgAddInternal();
-
-#if OPT_BOOL_OPS
-    fgMultipleNots = false;
-#endif
-
 #ifdef DEBUG
     /* Inliner could add basic blocks. Check that the flowgraph data is up-to-date */
     fgDebugCheckBBlist(false, false);
@@ -16857,6 +16878,14 @@ void Compiler::fgMorph()
     RecordStateAtEndOfInlining(); // Record "start" values for post-inlining cycles and elapsed time.
 
     EndPhase(PHASE_MORPH_INLINE);
+
+    /* Add any internal blocks/trees we may need */
+
+    fgAddInternal();
+
+#if OPT_BOOL_OPS
+    fgMultipleNots = false;
+#endif
 
 #ifdef DEBUG
     /* Inliner could add basic blocks. Check that the flowgraph data is up-to-date */
