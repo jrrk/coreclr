@@ -5976,7 +5976,7 @@ See MSDN doc.
 EXTERN_C
 PALIMPORT
 inline
-unsigned int __cdecl _rotl(unsigned int value, int shift)
+unsigned int __cdecl rotl(unsigned int value, int shift)
 {
     unsigned int retval = 0;
 
@@ -5999,7 +5999,7 @@ See MSDN doc.
 EXTERN_C
 PALIMPORT
 inline
-unsigned int __cdecl _rotr(unsigned int value, int shift)
+unsigned int __cdecl rotr(unsigned int value, int shift)
 {
     unsigned int retval;
 
